@@ -1,6 +1,3 @@
-
-
-
 # This task configures /etc/network/interfaces on ifupdown2. The variables for
 # which interfaces are neighbors and networks come from the group_vars/all file.
 - name: configure networking
@@ -8,8 +5,8 @@
       atomic: true
       description: "configure all the newtorking"
       template: |
-            add interface eth0 address dhcp
-            add loopback lo address {{ interfaces[ansible_hostname].loopback }}/32
+            add interface eth0 ip address dhcp
+            add loopback lo ip address {{ interfaces[ansible_hostname].loopback }}/32
 
             {% for iface in interfaces[ansible_hostname].neighbors %}
             add interface {{ iface }}
@@ -18,14 +15,14 @@
             {% for network in interfaces[ansible_hostname].networks | default(()) %}
             {% for port in interfaces[ansible_hostname].networks[network].ports %}
             add vlan {{network}}
-            add interface {{ port }} bridge-access {{ network }}
+            add interface {{ port }} bridge access {{ network }}
 
             {% endfor %}
-            add bridge bridge-ports {{ " ".join(interfaces[ansible_hostname].networks[network].ports) }}
-            add vlan-interface vlan{{ network }} address {{interfaces[ansible_hostname].networks[network].ip}}
+            add bridge bridge ports {{ " ".join(interfaces[ansible_hostname].networks[network].ports) }}
+            add vlan {{ network }} ip address {{interfaces[ansible_hostname].networks[network].ip}}
             {% endfor %}
 
-            add router bgp {{ interfaces[ansible_hostname].asn }}
+            add bgp autonomous-system {{ interfaces[ansible_hostname].asn }}
             add bgp router-id {{ interfaces[ansible_hostname].loopback }}
             add bgp network {{ interfaces[ansible_hostname].loopback }}/32
             {% for network in networks %}
@@ -50,20 +47,20 @@
             add bgp ipv6 unicast neighbor {{ neighbor }} activate
             {% endfor %}
 
-            add ip prefix-list dc-fabric-in seq 10 permit 0.0.0.0/0
-            add ip prefix-list dc-fabric-in seq 20 permit 10.0.0.0/24 le 32
-            add ip prefix-list dc-fabric-out seq 500 deny any
+            add routing prefix-list ipv4 dc-fabric-in seq 10 permit 0.0.0.0/0
+            add routing prefix-list ipv4 dc-fabric-in seq 20 permit 10.0.0.0/24 le 32
+            add routing prefix-list ipv4 dc-fabric-out seq 500 deny any
 
             {% for network in networks %}
             {% if networks[network].source != ansible_hostname %}
-            add ip prefix-list dc-fabric-in seq {{ loop.index*10 + 100 }} permit {{ network }}
+            add routing prefix-list ipv4 dc-fabric-in seq {{ loop.index*10 + 100 }} permit {{ network }}
             {% endif %}
             {% endfor %}
-            add ip prefix-list dc-fabric-in seq 500 deny any
-            add ip prefix-list dc-fabric-out seq 10 permit 10.0.0.0/24 le 32
+            add routing prefix-list ipv4 dc-fabric-in seq 500 deny any
+            add routing prefix-list ipv4 dc-fabric-out seq 10 permit 10.0.0.0/24 le 32
             {% for network in networks %}
             {% if not interfaces[ansible_hostname].get('networks', None) or networks[network].source == ansible_hostname %}
-            add ip prefix-list dc-fabric-out seq {{ loop.index*10 + 100 }} permit {{ network }}
+            add routing prefix-list ipv4 dc-fabric-out seq {{ loop.index*10 + 100 }} permit {{ network }}
             {% endif %}
             {% endfor %}
 
